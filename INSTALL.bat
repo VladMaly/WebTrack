@@ -5,7 +5,11 @@ echo.
 echo  Setting up WebTrack... follow the popup window.
 echo.
 
-if not exist "%~dp0Watch-Stock.ps1" (
+rem program files live in app\ next to this installer, or flat when this
+rem copy of INSTALL.bat is already the installed one in %LOCALAPPDATA%
+set "SRC=%~dp0app"
+if not exist "%SRC%\Watch-Stock.ps1" set "SRC=%~dp0"
+if not exist "%SRC%\Watch-Stock.ps1" (
     echo  ERROR: Setup files were not found next to this installer.
     echo.
     echo  If you are looking at this inside a ZIP file, please
@@ -19,15 +23,20 @@ if not exist "%~dp0Watch-Stock.ps1" (
 
 set "DEST=%LOCALAPPDATA%\WebTrack"
 if not exist "%DEST%" mkdir "%DEST%"
-copy /y "%~dp0Watch-Stock.ps1"    "%DEST%" >nul
-copy /y "%~dp0Setup-Wizard.ps1"   "%DEST%" >nul
-copy /y "%~dp0Install-Task.ps1"   "%DEST%" >nul
-copy /y "%~dp0Uninstall-Task.ps1" "%DEST%" >nul
-copy /y "%~dp0run-hidden.vbs"     "%DEST%" >nul
-copy /y "%~dp0INSTALL.bat"        "%DEST%" >nul
-copy /y "%~dp0UNINSTALL.bat"      "%DEST%" >nul
+if /i "%~dp0"=="%DEST%\" goto :wizard
 
-powershell -NoProfile -ExecutionPolicy Bypass -STA -File "%DEST%\Setup-Wizard.ps1"
+copy /y "%SRC%\Watch-Stock.ps1"    "%DEST%" >nul
+copy /y "%SRC%\Setup-Wizard.ps1"   "%DEST%" >nul
+copy /y "%SRC%\Install-Task.ps1"   "%DEST%" >nul
+copy /y "%SRC%\Uninstall-Task.ps1" "%DEST%" >nul
+copy /y "%SRC%\run-hidden.vbs"     "%DEST%" >nul
+copy /y "%~dp0INSTALL.bat"         "%DEST%" >nul
+copy /y "%~dp0UNINSTALL.bat"       "%DEST%" >nul
+
+:wizard
+set "URLARG="
+if not "%~1"=="" set "URLARG=-Url "%~1""
+powershell -NoProfile -ExecutionPolicy Bypass -STA -File "%DEST%\Setup-Wizard.ps1" %URLARG%
 if errorlevel 1 (
     echo.
     echo  Setup did not finish. Please send a photo of this window

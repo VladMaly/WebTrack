@@ -37,7 +37,7 @@ Two equally valid ways to give WebTrack to someone:
 After changing any script, rebuild the zip so both channels stay in sync, then commit both:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Build-Zip.ps1
+powershell -ExecutionPolicy Bypass -File .\app\Build-Zip.ps1
 git add -A
 git commit -m "describe the change"
 git push
@@ -45,16 +45,19 @@ git push
 
 ## How it works
 
-- `Setup-Wizard.ps1` — the install popup: takes a mint.ca link, validates it, grabs the product
+The repo keeps it simple on top: `INSTALL.bat`, `UNINSTALL.bat`, the zip, and this README.
+All machinery lives in `app\`:
+
+- `app\Setup-Wizard.ps1` — the install popup: takes a mint.ca link, validates it, grabs the product
   name from the page, adds it to `products.json`, registers the Task Scheduler job.
-- `Watch-Stock.ps1` — the watcher. Every 3 minutes it downloads each product page and reads the
+- `app\Watch-Stock.ps1` — the watcher. Every minute it downloads each product page and reads the
   `data-pwr-in-stock="True|False"` flag mint.ca embeds in every product page (the page's JSON-LD
   metadata always claims InStock — it lies — so it is ignored). Falls back to ADD TO CART button
   text if the layout ever changes, and recognizes queue/challenge pages as a "check now" event.
 - Everything lives in `%LOCALAPPDATA%\WebTrack` after install: `products.json` (watch list),
   `state.json` (last known status), `watch.log` (history).
 - The scheduled task **"WebTrack Stock Watcher"** runs `run-hidden.vbs` → hidden PowerShell,
-  every 3 minutes while the user is logged in, surviving reboots. Change the cadence with
+  every minute while the user is logged in, surviving reboots. Change the cadence with
   `Install-Task.ps1 -IntervalMinutes 5`.
 - Test the full alert (toast + alarm + browser): `Watch-Stock.ps1 -TestAlert`
 

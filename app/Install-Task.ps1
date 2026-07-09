@@ -2,7 +2,7 @@
 # every few minutes while you are logged in. No admin rights needed.
 [CmdletBinding()]
 param(
-    [int]$IntervalMinutes = 3
+    [int]$IntervalMinutes = 1
 )
 
 $ErrorActionPreference = 'Stop'

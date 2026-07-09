@@ -151,7 +151,7 @@ try {
     $lines += ''
     $lines += $watchList
     $lines += ''
-    $lines += 'It quietly checks every 3 minutes. The moment an item can be ordered you will get a LOUD notification and the page will open by itself so you can buy it.'
+    $lines += 'It quietly checks every minute. The moment an item can be ordered you will get a LOUD notification and the page will open by itself so you can buy it.'
     if (-not $verified) {
         $lines += ''
         $lines += 'Note: that link did not look exactly like a normal product page, but it will be watched anyway.'

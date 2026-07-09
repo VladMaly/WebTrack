@@ -12,7 +12,7 @@ INSTALL (one time, takes 15 seconds):
 
 WHAT IT DOES
 
-  It checks the mint.ca page every 3 minutes, silently, in the
+  It checks the mint.ca page every minute, silently, in the
   background. The moment the item can be ordered:
 
     - a LOUD notification pops up and stays until you dismiss it
@@ -31,3 +31,6 @@ UNINSTALL
 
   Double-click  UNINSTALL.bat  (from this ZIP, or from the
   installed folder above). Everything is removed.
+
+(The "app" folder holds the program files - you never need
+ to open it.)

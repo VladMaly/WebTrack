@@ -18,6 +18,10 @@ $SuggestedUrl = 'https://www.mint.ca/en/shop/coins/2026/rose-window-notre-dame-2
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+# curl.exe emits UTF-8; without this, accented product names arrive garbled
+# when launched from a double-clicked .bat (OEM codepage console)
+try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
+
 function Show-Message([string]$Text, [string]$Title, [string]$Icon) {
     if ($Interactive) {
         [void][System.Windows.Forms.MessageBox]::Show($Text, $Title,
@@ -62,6 +66,8 @@ function Read-UrlDialog([string]$Message, [string]$Prefill) {
     $form.Controls.AddRange(@($label, $box, $ok, $cancel))
     $form.AcceptButton = $ok
     $form.CancelButton = $cancel
+    # pre-select the suggested link so typing or pasting replaces it cleanly
+    $form.Add_Shown({ $box.Focus(); $box.SelectAll() })
 
     $result = $form.ShowDialog()
     $text = $box.Text
@@ -73,6 +79,7 @@ function Read-UrlDialog([string]$Message, [string]$Prefill) {
 function Get-CleanUrl([string]$Raw) {
     if ([string]::IsNullOrWhiteSpace($Raw)) { return $null }
     $u = $Raw.Trim().Trim('"')
+    if (([regex]::Matches($u, 'https?://')).Count -gt 1) { return $null }   # two links mashed together
     $q = $u.IndexOf('?'); if ($q -ge 0) { $u = $u.Substring(0, $q) }
     $h = $u.IndexOf('#'); if ($h -ge 0) { $u = $u.Substring(0, $h) }
     if ($u -notmatch '^https?://(www\.)?mint\.ca/.+') { return $null }
@@ -165,8 +172,13 @@ try {
     # 5. tell the human what is happening
     $watchList = ($products | ForEach-Object { '  - ' + [string]$_.name }) -join "`r`n"
     $lines = @()
-    if ($already) { $lines += 'You were already watching that item - all good.' }
-    $lines += 'WebTrack is now watching:'
+    if ($already) {
+        $lines += ('You were already watching: {0}' -f $name)
+    } else {
+        $lines += ('ADDED: {0}' -f $name)
+    }
+    $lines += ''
+    $lines += 'Full watch list:'
     $lines += ''
     $lines += $watchList
     $lines += ''

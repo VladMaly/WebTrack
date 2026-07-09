@@ -25,6 +25,9 @@ $ProblemReAlertHrs   = 1
 # signatures of queue/challenge/block pages served instead of the product page
 $BlockSignatures     = 'queue-it|queueit|Just a moment|cf-chl|challenge-platform|challenge-form|Access Denied|captcha|Pardon Our Interruption'
 
+# curl.exe emits UTF-8; decode it as such regardless of console codepage
+try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
+
 # only one instance at a time
 $script:Mutex = New-Object System.Threading.Mutex($false, 'Local\WebTrackStockWatch')
 if (-not $script:Mutex.WaitOne(0)) { exit 0 }

@@ -12,7 +12,7 @@ INSTALL (one time, takes 15 seconds):
 
 WHAT IT DOES
 
-  It checks the mint.ca page every minute, silently, in the
+  It checks the mint.ca page every 10 seconds, silently, in the
   background. The moment the item can be ordered:
 
     - a LOUD notification pops up and stays until you dismiss it

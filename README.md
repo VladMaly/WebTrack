@@ -52,15 +52,16 @@ All machinery lives in `app\`:
 
 - `app\Setup-Wizard.ps1` — the install popup: takes a mint.ca link, validates it, grabs the product
   name from the page, adds it to `products.json`, registers the Task Scheduler job.
-- `app\Watch-Stock.ps1` — the watcher. Every minute it downloads each product page and reads the
+- `app\Watch-Stock.ps1` — the watcher. Every 10 seconds it downloads each product page and reads the
   `data-pwr-in-stock="True|False"` flag mint.ca embeds in every product page (the page's JSON-LD
   metadata always claims InStock — it lies — so it is ignored). Falls back to ADD TO CART button
   text if the layout ever changes, and recognizes queue/challenge pages as a "check now" event.
 - Everything lives in `%LOCALAPPDATA%\WebTrack` after install: `products.json` (watch list),
   `state.json` (last known status), `watch.log` (history).
 - The scheduled task **"WebTrack Stock Watcher"** runs `run-hidden.vbs` → hidden PowerShell,
-  every minute while the user is logged in, surviving reboots. Change the cadence with
-  `Install-Task.ps1 -IntervalMinutes 5`.
+  every minute while the user is logged in, surviving reboots; each run fires 6 checks
+  10 seconds apart (Task Scheduler cannot repeat faster than 1 minute). Slow it down with
+  `Install-Task.ps1 -ChecksPerMinute 1` (once a minute) or `-IntervalMinutes 5 -ChecksPerMinute 1`.
 - Test the full alert (toast + alarm + browser): `Watch-Stock.ps1 -TestAlert`
 
 ## Limitations

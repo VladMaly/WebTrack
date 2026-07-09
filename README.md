@@ -3,7 +3,7 @@
 Watches [mint.ca](https://www.mint.ca) product pages and alerts the moment an item comes in stock:
 
 - **Persistent Windows notification** (stays on screen until dismissed) — click it to open the product page
-- **You choose how often it checks** (seconds or minutes) with an optional ±20% randomizer so it doesn't look like a bot — 60 s is the researched safe default
+- **You choose how often it checks** (seconds or minutes) with an optional ±20% randomizer so it doesn't look like a bot — 90 s is the researched safe default
 - Re-alerts every 15 minutes while the item stays in stock
 - If the item is **already in stock when you set it up**, you get one regular heads-up instead
 - If mint.ca throws up a queue/bot-check page (common during hot releases), it alarms immediately — that often means a drop is live
@@ -68,7 +68,7 @@ All machinery lives in `app\`:
   bursting `round(60/N)` checks per minute and ≥1-minute rates with a repeating trigger.
 - Test the alert notification: `Watch-Stock.ps1 -TestAlert`
 
-### Why 60 seconds is the default (researched 2026-07)
+### Why 90 seconds is the default (researched 2026-07)
 
 mint.ca runs on Optimizely DXP behind **Cloudflare Bot Management** (the `__cf_bm` cookie), with an
 ASP.NET/Azure origin. There is no standing per-IP rate limit and no permanent waiting room, but two
@@ -79,9 +79,10 @@ polling hardest, so the goal is to look like an eager human, not a scraper.
 
 WebTrack does that three ways:
 
-- **60 s default** (~1,440 hits/day) — polite, well under any rule window, still catches a drop
-  within a minute. The popup lets you pick anything from 15 s up; **≤30 s is best reserved for the
-  few minutes around a launch** (RCM drops go live ~9–10 am ET), since that's when limits tighten.
+- **90 s default** (~960 hits/day) — comfortably polite, and with the ±20% randomizer the real
+  spacing wanders ~72–108 s so there's no fixed pattern. Still catches a drop inside ~1.5 min. The
+  popup lets you pick anything from 15 s up; **≤30 s is best reserved for the few minutes around a
+  launch** (RCM drops go live ~9–10 am ET), since that's when limits tighten.
 - **Randomized timing** (the checkbox, ±20% by default) — a perfect metronome is itself a bot
   signature; the wobble makes each check land at an unpredictable moment.
 - **Cookie reuse + browser headers** — a `cookies.txt` jar keeps the Cloudflare/session cookies so

@@ -18,7 +18,7 @@ $UserAgent    = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (K
 $SuggestedUrl = 'https://www.mint.ca/en/shop/coins/2026/rose-window-notre-dame-2026-fine-silver-coin'
 
 # researched safe default polling rate (see README); floor keeps it off block-lists
-$DefaultIntervalSeconds = 60
+$DefaultIntervalSeconds = 90
 $MinIntervalSeconds      = 15
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -46,6 +46,8 @@ function Read-SetupDialog([string]$Message, [string]$Prefill) {
     $form.MaximizeBox = $false
     $form.MinimizeBox = $false
     $form.TopMost = $true
+    $form.BackColor = [System.Drawing.Color]::White
+    $form.Font = New-Object System.Drawing.Font('Segoe UI', 9.75)
 
     $label = New-Object System.Windows.Forms.Label
     $label.Location = New-Object System.Drawing.Point(12, 12)
@@ -56,6 +58,8 @@ function Read-SetupDialog([string]$Message, [string]$Prefill) {
     $box.Location = New-Object System.Drawing.Point(12, 54)
     $box.Size = New-Object System.Drawing.Size(496, 23)
     $box.Text = $Prefill
+    # WinForms TextBox ignores Ctrl+A by default - wire it up
+    $box.Add_KeyDown({ if ($_.Control -and $_.KeyCode -eq 'A') { $box.SelectAll(); $_.SuppressKeyPress = $true } })
 
     $freqLabel = New-Object System.Windows.Forms.Label
     $freqLabel.Location = New-Object System.Drawing.Point(12, 92)
@@ -92,8 +96,13 @@ function Read-SetupDialog([string]$Message, [string]$Prefill) {
     $ok = New-Object System.Windows.Forms.Button
     $ok.Text = 'Start watching'
     $ok.Location = New-Object System.Drawing.Point(292, 196)
-    $ok.Size = New-Object System.Drawing.Size(115, 30)
+    $ok.Size = New-Object System.Drawing.Size(115, 32)
     $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $ok.FlatStyle = 'Flat'
+    $ok.FlatAppearance.BorderSize = 0
+    $ok.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 215)
+    $ok.ForeColor = [System.Drawing.Color]::White
+    $ok.Font = New-Object System.Drawing.Font('Segoe UI', 9.75, [System.Drawing.FontStyle]::Bold)
 
     $cancel = New-Object System.Windows.Forms.Button
     $cancel.Text = 'Cancel'

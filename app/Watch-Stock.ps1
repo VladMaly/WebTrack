@@ -254,6 +254,7 @@ foreach ($product in $productList) {
         lastProblemAlertUtc = $null
         failCount           = 0
         recentFails         = $recentFails
+        baselineInStock     = $false
     }
     if ($prev) {
         if ($prevStatus -eq $status -and $prev.since) { $entry.since = [string]$prev.since }
@@ -263,26 +264,46 @@ foreach ($product in $productList) {
     }
 
     $isFailure = ($status -eq 'FETCH_ERROR' -or $status -eq 'UNKNOWN' -or $status -eq 'BLOCKED')
+    # baseline = the item was ALREADY in stock when the user set it up; carried
+    # across fetch blips so a hiccup does not turn it into a full-blown alarm
+    $wasBaseline = $false
+    if ($prev -and $prev.baselineInStock) { $wasBaseline = $true }
 
     if ($status -eq 'IN_STOCK') {
-        $isNewlyInStock = ($prevStatus -ne 'IN_STOCK')
-        $alertDue = $true
-        if (-not $isNewlyInStock) {
-            $alertDue = Test-Due $entry.lastAlertUtc $ReAlertMinutes $now
-        }
-        if ($alertDue) {
-            Write-Log ('ALERT {0} is IN STOCK ({1})' -f $name, $result.Detail)
-            $toastOk = Show-Toast ('IN STOCK: {0}' -f $name) 'Click to open the product page and buy it now.' $url -Alarm
-            if ($isNewlyInStock) {
-                try { Start-Process $url } catch { Write-Log ('WARN could not open browser: {0}' -f $_.Exception.Message) }
+        $isFirstSight = ($null -eq $prev -and $result.Detail -notlike '*SIMULATED*')
+        if ($isFirstSight -or $wasBaseline) {
+            # the user just set this up from the very page that is in stock -
+            # one quiet heads-up, no alarm, no browser, no nagging. The full
+            # alarm fires only when an item GOES from unavailable to in stock.
+            $entry.baselineInStock = $true
+            if ($isFirstSight) {
+                Write-Log ('INFO {0} is already IN STOCK at setup - quiet heads-up only' -f $name)
+                Show-Toast ('Already in stock: {0}' -f $name) 'This item can be ordered right now. Click to open the product page.' $url | Out-Null
+                $entry.lastAlertUtc = $now.ToString('o')
+            } else {
+                Write-Log ('OK {0} still IN_STOCK (since setup), staying quiet' -f $name)
             }
-            if (-not $toastOk) { Invoke-AlarmFallback }
-            $entry.lastAlertUtc = $now.ToString('o')
         } else {
-            Write-Log ('INFO {0} still IN_STOCK, next reminder in <= {1} min' -f $name, $ReAlertMinutes)
+            $isNewlyInStock = ($prevStatus -ne 'IN_STOCK')
+            $alertDue = $true
+            if (-not $isNewlyInStock) {
+                $alertDue = Test-Due $entry.lastAlertUtc $ReAlertMinutes $now
+            }
+            if ($alertDue) {
+                Write-Log ('ALERT {0} is IN STOCK ({1})' -f $name, $result.Detail)
+                $toastOk = Show-Toast ('IN STOCK: {0}' -f $name) 'Click to open the product page and buy it now.' $url -Alarm
+                if ($isNewlyInStock) {
+                    try { Start-Process $url } catch { Write-Log ('WARN could not open browser: {0}' -f $_.Exception.Message) }
+                }
+                if (-not $toastOk) { Invoke-AlarmFallback }
+                $entry.lastAlertUtc = $now.ToString('o')
+            } else {
+                Write-Log ('INFO {0} still IN_STOCK, next reminder in <= {1} min' -f $name, $ReAlertMinutes)
+            }
         }
     }
     elseif ($isFailure) {
+        $entry.baselineInStock = $wasBaseline
         $prevFail = 0
         if ($prev -and $prev.failCount) { $prevFail = [int]$prev.failCount }
         $entry.failCount    = $prevFail + 1

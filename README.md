@@ -3,8 +3,9 @@
 Watches [mint.ca](https://www.mint.ca) product pages and alerts the moment an item comes in stock:
 
 - **Loud, persistent Windows notification** (stays on screen, looping alarm sound) — click it to open the product page
-- **Opens the product page in your browser** automatically the first time stock is detected
+- **Opens the product page in your browser** automatically the moment the item *comes into* stock
 - Re-alerts every 15 minutes while the item stays in stock
+- If the item is **already in stock when you set it up**, you get one quiet heads-up instead — the loud alarm + auto-open is reserved for the restock moment
 - If mint.ca throws up a queue/bot-check page (common during hot releases), it alarms immediately — that often means a drop is live
 - Warns you if checks keep failing or `products.json` breaks, so it never fails silently
 

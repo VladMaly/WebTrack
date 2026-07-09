@@ -141,6 +141,25 @@ try {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'the background task could not be created.' }
         Start-ScheduledTask -TaskName 'WebTrack Stock Watcher'
+
+        # friendly Start Menu entries with real icons (.bat files cannot carry their own icon)
+        try {
+            $smDir = Join-Path ([Environment]::GetFolderPath('Programs')) 'WebTrack'
+            if (-not (Test-Path $smDir)) { New-Item -ItemType Directory -Path $smDir -Force | Out-Null }
+            $shell = New-Object -ComObject WScript.Shell
+            $add = $shell.CreateShortcut((Join-Path $smDir 'WebTrack - watch another item.lnk'))
+            $add.TargetPath = Join-Path $InstallDir '_INSTALL.bat'
+            $add.WorkingDirectory = $InstallDir
+            $add.IconLocation = "$env:SystemRoot\System32\msiexec.exe,0"
+            $add.Description = 'Add another mint.ca item to WebTrack'
+            $add.Save()
+            $rem = $shell.CreateShortcut((Join-Path $smDir 'WebTrack - uninstall.lnk'))
+            $rem.TargetPath = Join-Path $InstallDir '_UNINSTALL.bat'
+            $rem.WorkingDirectory = $InstallDir
+            $rem.IconLocation = "$env:SystemRoot\System32\shell32.dll,31"
+            $rem.Description = 'Remove WebTrack completely'
+            $rem.Save()
+        } catch { }
     }
 
     # 5. tell the human what is happening
@@ -157,7 +176,7 @@ try {
         $lines += 'Note: that link did not look exactly like a normal product page, but it will be watched anyway.'
     }
     $lines += ''
-    $lines += 'To watch another item later, run INSTALL.bat again and paste the new link.'
+    $lines += 'To watch another item later, open "WebTrack - watch another item" from the Start Menu (or run _INSTALL.bat again).'
     Show-Message ($lines -join "`r`n") 'WebTrack is running!' 'Information'
     exit 0
 }

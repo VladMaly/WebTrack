@@ -4,7 +4,7 @@ WebTrack - Royal Canadian Mint stock watcher
 INSTALL (one time, takes 15 seconds):
 
   1. Extract this ZIP anywhere  (right-click -> Extract All)
-  2. Open the extracted folder and double-click  INSTALL.bat
+  2. Open the extracted folder and double-click  _INSTALL.bat
   3. A small window pops up with the coin link already filled in.
      Keep it (or paste a different mint.ca link) and click
      "Start watching".
@@ -24,13 +24,13 @@ WHAT IT DOES
 
 WATCH ANOTHER ITEM
 
-  Double-click INSTALL.bat again and paste the new mint.ca link.
-  (It is also installed at C:\Users\YOURNAME\AppData\Local\WebTrack)
+  Open the Start Menu and click "WebTrack - watch another item",
+  then paste the new mint.ca link.
 
 UNINSTALL
 
-  Double-click  UNINSTALL.bat  (from this ZIP, or from the
-  installed folder above). Everything is removed.
+  Open the Start Menu and click "WebTrack - uninstall"
+  (or double-click _UNINSTALL.bat). Everything is removed.
 
 (The "app" folder holds the program files - you never need
  to open it.)

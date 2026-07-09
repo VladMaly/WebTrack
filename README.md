@@ -14,16 +14,18 @@ Windows 10/11 only. No admin rights, no dependencies — plain PowerShell + Task
 
 **Option A — you were sent `WebTrack-Setup.zip`:**
 1. Extract it (right-click → *Extract All*)
-2. Double-click **`INSTALL.bat`**
+2. Double-click **`_INSTALL.bat`**
 3. A small window pops up with the coin link pre-filled — keep it or paste any other mint.ca product link, click **Start watching**. Done.
 
 **Option B — you were sent this GitHub link:**
 1. Click the green **Code** button (top of this page) → **Download ZIP**
 2. Then follow Option A from step 1.
 
-To watch **another item later**: double-click `INSTALL.bat` again (it's also at `C:\Users\<you>\AppData\Local\WebTrack`) and paste the new link.
+Installing also adds Start Menu entries: **"WebTrack - watch another item"** and **"WebTrack - uninstall"**.
 
-To **uninstall**: double-click `UNINSTALL.bat`. Everything is removed.
+To watch **another item later**: Start Menu → *WebTrack - watch another item* (or run `_INSTALL.bat` again) and paste the new link.
+
+To **uninstall**: Start Menu → *WebTrack - uninstall* (or `_UNINSTALL.bat`). Everything is removed.
 
 ## Sharing workflow (for the maintainer)
 
@@ -31,8 +33,8 @@ Two equally valid ways to give WebTrack to someone:
 
 | Channel | What you send | What they do |
 |---|---|---|
-| ZIP | `WebTrack-Setup.zip` (email/chat/USB) | extract → `INSTALL.bat` |
-| GitHub | `https://github.com/VladMaly/WebTrack` | Code → Download ZIP → extract → `INSTALL.bat` |
+| ZIP | `WebTrack-Setup.zip` (email/chat/USB) | extract → `_INSTALL.bat` |
+| GitHub | `https://github.com/VladMaly/WebTrack` | Code → Download ZIP → extract → `_INSTALL.bat` |
 
 After changing any script, rebuild the zip so both channels stay in sync, then commit both:
 
@@ -45,7 +47,7 @@ git push
 
 ## How it works
 
-The repo keeps it simple on top: `INSTALL.bat`, `UNINSTALL.bat`, the zip, and this README.
+The repo keeps it simple on top: `_INSTALL.bat`, `_UNINSTALL.bat`, the zip, and this README.
 All machinery lives in `app\`:
 
 - `app\Setup-Wizard.ps1` — the install popup: takes a mint.ca link, validates it, grabs the product

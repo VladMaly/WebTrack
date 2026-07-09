@@ -3,6 +3,7 @@
 Watches [mint.ca](https://www.mint.ca) product pages and alerts the moment an item comes in stock:
 
 - **Persistent Windows notification** (stays on screen until dismissed) — click it to open the product page
+- **You choose how often it checks** (seconds or minutes) with an optional ±20% randomizer so it doesn't look like a bot — 60 s is the researched safe default
 - Re-alerts every 15 minutes while the item stays in stock
 - If the item is **already in stock when you set it up**, you get one regular heads-up instead
 - If mint.ca throws up a queue/bot-check page (common during hot releases), it alarms immediately — that often means a drop is live
@@ -15,7 +16,7 @@ Windows 10/11 only. No admin rights, no dependencies — plain PowerShell + Task
 **Option A — you were sent `WebTrack-Setup.zip`:**
 1. Extract it (right-click → *Extract All*)
 2. Double-click **`_INSTALL.bat`**
-3. A small window pops up with the coin link pre-filled — keep it or paste any other mint.ca product link, click **Start watching**. Done.
+3. A small window pops up with the coin link pre-filled — keep it or paste any other mint.ca product link, pick how often to check (30 seconds is the safe default), and click **Start watching**. Done.
 
 **Option B — you were sent this GitHub link:**
 1. Click the green **Code** button (top of this page) → **Download ZIP**
@@ -50,21 +51,44 @@ git push
 The repo keeps it simple on top: `_INSTALL.bat`, `_UNINSTALL.bat`, the zip, and this README.
 All machinery lives in `app\`:
 
-- `app\Setup-Wizard.ps1` — the install popup: takes a mint.ca link, validates it, grabs the product
-  name from the page, writes it to `products.json` (replacing the previous item), registers the
-  Task Scheduler job. (`products.json` supports multiple entries if edited by hand; the popup
-  always sets exactly one.)
-- `app\Watch-Stock.ps1` — the watcher. Every 10 seconds it downloads each product page and reads the
+- `app\Setup-Wizard.ps1` — the install popup: takes a mint.ca link + a check interval (seconds or
+  minutes), validates the link, grabs the product name from the page, writes it to `products.json`
+  (replacing the previous item), registers the Task Scheduler job. (`products.json` supports
+  multiple entries if edited by hand; the popup always sets exactly one.)
+- `app\Watch-Stock.ps1` — the watcher. On each run it downloads the product page and reads the
   `data-pwr-in-stock="True|False"` flag mint.ca embeds in every product page (the page's JSON-LD
   metadata always claims InStock — it lies — so it is ignored). Falls back to ADD TO CART button
   text if the layout ever changes, and recognizes queue/challenge pages as a "check now" event.
 - Everything lives in `%LOCALAPPDATA%\WebTrack` after install: `products.json` (watch list),
   `state.json` (last known status), `watch.log` (history).
-- The scheduled task **"WebTrack Stock Watcher"** runs `run-hidden.vbs` → hidden PowerShell,
-  every minute while the user is logged in, surviving reboots; each run fires 6 checks
-  10 seconds apart (Task Scheduler cannot repeat faster than 1 minute). Slow it down with
-  `Install-Task.ps1 -ChecksPerMinute 1` (once a minute) or `-IntervalMinutes 5 -ChecksPerMinute 1`.
-- Test the full alert (toast + alarm + browser): `Watch-Stock.ps1 -TestAlert`
+- The scheduled task **"WebTrack Stock Watcher"** runs `run-hidden.vbs` → hidden PowerShell while
+  the user is logged in, surviving reboots. Interval is chosen in the popup; **30 seconds is the
+  default** (a safe rate that won't get the IP rate-limited — see below). Task Scheduler cannot
+  repeat faster than 1 minute, so `Install-Task.ps1 -IntervalSeconds N` handles sub-minute rates by
+  bursting `round(60/N)` checks per minute and ≥1-minute rates with a repeating trigger.
+- Test the alert notification: `Watch-Stock.ps1 -TestAlert`
+
+### Why 60 seconds is the default (researched 2026-07)
+
+mint.ca runs on Optimizely DXP behind **Cloudflare Bot Management** (the `__cf_bm` cookie), with an
+ASP.NET/Azure origin. There is no standing per-IP rate limit and no permanent waiting room, but two
+things raise your bot score: **volume** (a fixed 10 s poll = 8,640 identical hits/day to one URL
+from one IP) and **cookieless requests** (each bare poll mints a fresh session — a textbook bot
+tell). Rate limits get switched on *ad hoc* during hot releases, which is exactly when you're
+polling hardest, so the goal is to look like an eager human, not a scraper.
+
+WebTrack does that three ways:
+
+- **60 s default** (~1,440 hits/day) — polite, well under any rule window, still catches a drop
+  within a minute. The popup lets you pick anything from 15 s up; **≤30 s is best reserved for the
+  few minutes around a launch** (RCM drops go live ~9–10 am ET), since that's when limits tighten.
+- **Randomized timing** (the checkbox, ±20% by default) — a perfect metronome is itself a bot
+  signature; the wobble makes each check land at an unpredictable moment.
+- **Cookie reuse + browser headers** — a `cookies.txt` jar keeps the Cloudflare/session cookies so
+  repeated polls look like one returning visitor, plus `Accept`/`Accept-Language` headers.
+
+If the Mint ever does put up a Cloudflare challenge or queue page, WebTrack recognizes it and alarms
+so you can step in yourself.
 
 ## Limitations
 

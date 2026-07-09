@@ -14,6 +14,7 @@ $ConfigPath       = Join-Path $Root 'products.json'
 $StatePath        = Join-Path $Root 'state.json'
 $LogPath          = Join-Path $Root 'watch.log'
 $ConfigAlertStamp = Join-Path $Root 'config-alert.stamp'
+$CookieJar        = Join-Path $Root 'cookies.txt'
 
 $UserAgent           = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 $ReAlertMinutes      = 15   # nag again this often while an item stays in stock
@@ -28,9 +29,17 @@ $BlockSignatures     = 'queue-it|queueit|Just a moment|cf-chl|challenge-platform
 # curl.exe emits UTF-8; decode it as such regardless of console codepage
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
 
-# only one instance at a time
+# only one instance at a time. If a previous run was killed mid-check (e.g. the
+# task's time limit fired), the mutex is "abandoned": WaitOne throws
+# AbandonedMutexException but ownership still transfers to us, so we catch it and
+# carry on - otherwise every future run would throw here and exit without ever
+# logging or checking (a silent, permanent outage).
 $script:Mutex = New-Object System.Threading.Mutex($false, 'Local\WebTrackStockWatch')
-if (-not $script:Mutex.WaitOne(0)) { exit 0 }
+try {
+    if (-not $script:Mutex.WaitOne(0)) { exit 0 }
+} catch [System.Threading.AbandonedMutexException] {
+    # acquired anyway; the abandoning process is gone
+}
 
 function Write-Log([string]$Message) {
     $line = ('{0:yyyy-MM-dd HH:mm:ss}  {1}' -f (Get-Date), $Message)
@@ -65,8 +74,14 @@ function Get-PageStatus([string]$Url) {
     $html = $null
     $launchError = $null
     try {
+        # -b/-c cookie jar reuses the Cloudflare __cf_bm + ASP.NET session cookies so
+        # repeated polls look like one returning visitor, not a fresh bot each time;
+        # Accept headers round out the browser-like request (GET only - HEAD 404s here)
         $html = (& curl.exe -sL --compressed --max-time 25 --retry 2 --retry-delay 2 `
-            --retry-all-errors --retry-max-time 40 -A $UserAgent -- $Url) -join "`n"
+            --retry-all-errors --retry-max-time 40 -A $UserAgent `
+            -b $CookieJar -c $CookieJar `
+            -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' `
+            -H 'Accept-Language: en-CA,en;q=0.9' -- $Url) -join "`n"
     } catch { $launchError = $_.Exception.Message }
     if ($launchError) {
         return @{ Status = 'FETCH_ERROR'; Detail = ('curl failed to launch: {0}' -f $launchError) }

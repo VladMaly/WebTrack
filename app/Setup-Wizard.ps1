@@ -1,9 +1,11 @@
-# Setup-Wizard.ps1 - friendly setup popup: asks for a mint.ca link, saves it,
-# installs the background watcher task. Non-coders only ever see small windows.
-# Scripted use:  Setup-Wizard.ps1 -Url <link> [-InstallDir <dir>] [-SkipTask]
+# Setup-Wizard.ps1 - friendly setup popup: asks for a mint.ca link + check
+# frequency, saves it, installs the background watcher task.
+# Scripted use:  Setup-Wizard.ps1 -Url <link> [-IntervalSeconds N] [-InstallDir <dir>] [-SkipTask]
 [CmdletBinding()]
 param(
     [string]$Url,
+    [int]$IntervalSeconds = 0,
+    [int]$JitterPercent = 20,   # 0 = fixed timer; 20 = randomize +/-20%
     [string]$InstallDir,
     [switch]$SkipTask
 )
@@ -14,6 +16,10 @@ if (-not $InstallDir) { $InstallDir = Join-Path $env:LOCALAPPDATA 'WebTrack' }
 $ConfigPath   = Join-Path $InstallDir 'products.json'
 $UserAgent    = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 $SuggestedUrl = 'https://www.mint.ca/en/shop/coins/2026/rose-window-notre-dame-2026-fine-silver-coin'
+
+# researched safe default polling rate (see README); floor keeps it off block-lists
+$DefaultIntervalSeconds = 60
+$MinIntervalSeconds      = 15
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -31,10 +37,10 @@ function Show-Message([string]$Text, [string]$Title, [string]$Icon) {
     }
 }
 
-function Read-UrlDialog([string]$Message, [string]$Prefill) {
+function Read-SetupDialog([string]$Message, [string]$Prefill) {
     $form = New-Object System.Windows.Forms.Form
     $form.Text = 'WebTrack setup'
-    $form.ClientSize = New-Object System.Drawing.Size(520, 140)
+    $form.ClientSize = New-Object System.Drawing.Size(520, 240)
     $form.StartPosition = 'CenterScreen'
     $form.FormBorderStyle = 'FixedDialog'
     $form.MaximizeBox = $false
@@ -51,19 +57,51 @@ function Read-UrlDialog([string]$Message, [string]$Prefill) {
     $box.Size = New-Object System.Drawing.Size(496, 23)
     $box.Text = $Prefill
 
+    $freqLabel = New-Object System.Windows.Forms.Label
+    $freqLabel.Location = New-Object System.Drawing.Point(12, 92)
+    $freqLabel.Size = New-Object System.Drawing.Size(130, 23)
+    $freqLabel.Text = 'Check for stock every:'
+    $freqLabel.TextAlign = 'MiddleLeft'
+
+    $num = New-Object System.Windows.Forms.NumericUpDown
+    $num.Location = New-Object System.Drawing.Point(148, 90)
+    $num.Size = New-Object System.Drawing.Size(70, 23)
+    $num.Minimum = 1
+    $num.Maximum = 999
+    $num.Value = $DefaultIntervalSeconds
+
+    $units = New-Object System.Windows.Forms.ComboBox
+    $units.Location = New-Object System.Drawing.Point(226, 90)
+    $units.Size = New-Object System.Drawing.Size(100, 23)
+    $units.DropDownStyle = 'DropDownList'
+    [void]$units.Items.AddRange(@('seconds', 'minutes'))
+    $units.SelectedIndex = 0
+
+    $randomize = New-Object System.Windows.Forms.CheckBox
+    $randomize.Location = New-Object System.Drawing.Point(12, 120)
+    $randomize.Size = New-Object System.Drawing.Size(496, 22)
+    $randomize.Checked = ($JitterPercent -gt 0)
+    $randomize.Text = 'Randomize the timing by ' + $JitterPercent + '% (recommended - looks less like a bot)'
+
+    $hint = New-Object System.Windows.Forms.Label
+    $hint.Location = New-Object System.Drawing.Point(12, 146)
+    $hint.Size = New-Object System.Drawing.Size(496, 34)
+    $hint.ForeColor = [System.Drawing.Color]::DimGray
+    $hint.Text = ("Tip: {0} seconds is a safe default. Much faster can get you rate-limited or blocked by the store." -f $DefaultIntervalSeconds)
+
     $ok = New-Object System.Windows.Forms.Button
     $ok.Text = 'Start watching'
-    $ok.Location = New-Object System.Drawing.Point(292, 96)
+    $ok.Location = New-Object System.Drawing.Point(292, 196)
     $ok.Size = New-Object System.Drawing.Size(115, 30)
     $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
 
     $cancel = New-Object System.Windows.Forms.Button
     $cancel.Text = 'Cancel'
-    $cancel.Location = New-Object System.Drawing.Point(415, 96)
+    $cancel.Location = New-Object System.Drawing.Point(415, 196)
     $cancel.Size = New-Object System.Drawing.Size(93, 30)
     $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
 
-    $form.Controls.AddRange(@($label, $box, $ok, $cancel))
+    $form.Controls.AddRange(@($label, $box, $freqLabel, $num, $units, $randomize, $hint, $ok, $cancel))
     $form.AcceptButton = $ok
     $form.CancelButton = $cancel
     # pre-select the suggested link so typing or pasting replaces it cleanly
@@ -71,8 +109,13 @@ function Read-UrlDialog([string]$Message, [string]$Prefill) {
 
     $result = $form.ShowDialog()
     $text = $box.Text
+    $seconds = [int]$num.Value
+    if ($units.SelectedItem -eq 'minutes') { $seconds = $seconds * 60 }
+    $randomizeOn = $randomize.Checked
     $form.Dispose()
-    if ($result -eq [System.Windows.Forms.DialogResult]::OK) { return $text }
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        return @{ Url = $text; IntervalSeconds = $seconds; Randomize = $randomizeOn }
+    }
     return $null
 }
 
@@ -87,23 +130,34 @@ function Get-CleanUrl([string]$Raw) {
 }
 
 try {
-    # 1. get the link
+    # 1. get the link + how often to check
     $clean = $null
     if ($Interactive) {
         $prefill = $SuggestedUrl   # pre-filled with the Rose Window coin; replace it with any mint.ca link
         $msg = 'This is the item WebTrack will watch. Keep it, or paste a different mint.ca link, then click Start watching:'
         while ($true) {
-            $raw = Read-UrlDialog $msg $prefill
-            if ($null -eq $raw) { exit 0 }
-            $clean = Get-CleanUrl $raw
-            if ($clean) { break }
-            $prefill = $raw
+            $answer = Read-SetupDialog $msg $prefill
+            if ($null -eq $answer) { exit 0 }
+            $clean = Get-CleanUrl $answer.Url
+            if ($clean) {
+                $IntervalSeconds = [int]$answer.IntervalSeconds
+                if (-not $answer.Randomize) { $JitterPercent = 0 }
+                break
+            }
+            $prefill = $answer.Url
             $msg = "That doesn't look like a mint.ca link (it should start with https://www.mint.ca/). Please paste the full link from your browser's address bar:"
         }
     } else {
         $clean = Get-CleanUrl $Url
         if (-not $clean) { Write-Host 'ERROR: not a valid mint.ca link.'; exit 2 }
     }
+
+    # clamp the interval to a sane floor (blank/0 -> researched default)
+    if ($IntervalSeconds -le 0) { $IntervalSeconds = $DefaultIntervalSeconds }
+    if ($IntervalSeconds -lt $MinIntervalSeconds) { $IntervalSeconds = $MinIntervalSeconds }
+    # jitter to hand to the installer: -1 means "auto 20%", 0 means off
+    if ($JitterPercent -le 0) { $jitterSeconds = 0 }
+    else { $jitterSeconds = [Math]::Round($IntervalSeconds * $JitterPercent / 100) }
 
     # 2. look at the page: grab a friendly name, sanity-check it is a product page
     $name = $null
@@ -134,7 +188,7 @@ try {
     if (-not $SkipTask) {
         $installer = Join-Path $InstallDir 'Install-Task.ps1'
         if (-not (Test-Path $installer)) { throw "Install-Task.ps1 not found in $InstallDir" }
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer | Out-Null
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer -IntervalSeconds $IntervalSeconds -JitterSeconds $jitterSeconds | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'the background task could not be created.' }
         Start-ScheduledTask -TaskName 'WebTrack Stock Watcher'
 
@@ -171,10 +225,17 @@ try {
     }
 
     # 5. tell the human what is happening
+    if ($IntervalSeconds -ge 60 -and $IntervalSeconds % 60 -eq 0) {
+        $mins = $IntervalSeconds / 60
+        $every = if ($mins -eq 1) { 'every minute' } else { ('every {0} minutes' -f $mins) }
+    } else {
+        $every = ('every {0} seconds' -f $IntervalSeconds)
+    }
+    $randomNote = if ($jitterSeconds -gt 0) { ' (with a little random wobble so it does not look like a bot)' } else { '' }
     $lines = @()
     $lines += ('WebTrack is now watching: {0}' -f $name)
     $lines += ''
-    $lines += 'It quietly checks every 10 seconds. The moment it can be ordered you will get a Windows notification - click it to open the page and buy.'
+    $lines += ('It quietly checks {0}{1}. The moment it can be ordered you will get a Windows notification - click it to open the page and buy.' -f $every, $randomNote)
     if (-not $verified) {
         $lines += ''
         $lines += 'Note: that link did not look exactly like a normal product page, but it will be watched anyway.'

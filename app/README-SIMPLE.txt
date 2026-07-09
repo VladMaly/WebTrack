@@ -6,14 +6,15 @@ INSTALL (one time, takes 15 seconds):
   1. Extract this ZIP anywhere  (right-click -> Extract All)
   2. Open the extracted folder and double-click  _INSTALL.bat
   3. A small window pops up with the coin link already filled in.
-     Keep it (or paste a different mint.ca link) and click
+     Keep it (or paste a different mint.ca link), pick how often
+     to check (30 seconds is a safe default), and click
      "Start watching".
   4. Done. You can delete the ZIP and the extracted folder.
 
 WHAT IT DOES
 
-  It checks the mint.ca page every 10 seconds, silently, in the
-  background. The moment the item COMES IN stock, a Windows
+  It checks the mint.ca page on the schedule you picked, silently,
+  in the background. The moment the item COMES IN stock, a Windows
   notification pops up and stays until you dismiss it - click
   it to open the page and buy.
 

@@ -125,21 +125,10 @@ try {
         if ([string]::IsNullOrWhiteSpace($name)) { $name = $clean }
     }
 
-    # 3. add it to the watch list (rebuild fresh if the config is broken)
-    $products = @()
-    if (Test-Path $ConfigPath) {
-        try {
-            $cfg = Get-Content $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            if ($cfg -and $cfg.products) { $products = @($cfg.products | Where-Object { $_ -and $_.url }) }
-        } catch { $products = @() }
-    }
-    $already = $false
-    foreach ($p in $products) { if ([string]$p.url -eq $clean) { $already = $true; break } }
-    if (-not $already) {
-        $products = @($products) + @(@{ name = $name; url = $clean })
-        if (-not (Test-Path $InstallDir)) { New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null }
-        @{ products = $products } | ConvertTo-Json -Depth 5 | Set-Content -Path $ConfigPath -Encoding UTF8
-    }
+    # 3. WebTrack watches exactly what was entered - the new link REPLACES any previous one
+    if (-not (Test-Path $InstallDir)) { New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null }
+    @{ products = @(@{ name = $name; url = $clean }) } | ConvertTo-Json -Depth 5 |
+        Set-Content -Path $ConfigPath -Encoding UTF8
 
     # 4. install / refresh the background task and run a first check right away
     if (-not $SkipTask) {
@@ -154,11 +143,13 @@ try {
             $smDir = Join-Path ([Environment]::GetFolderPath('Programs')) 'WebTrack'
             if (-not (Test-Path $smDir)) { New-Item -ItemType Directory -Path $smDir -Force | Out-Null }
             $shell = New-Object -ComObject WScript.Shell
-            $add = $shell.CreateShortcut((Join-Path $smDir 'WebTrack - watch another item.lnk'))
+            $oldLnk = Join-Path $smDir 'WebTrack - watch another item.lnk'
+            if (Test-Path $oldLnk) { Remove-Item $oldLnk -Force }
+            $add = $shell.CreateShortcut((Join-Path $smDir 'WebTrack - change watched item.lnk'))
             $add.TargetPath = Join-Path $InstallDir '_INSTALL.bat'
             $add.WorkingDirectory = $InstallDir
             $add.IconLocation = "$env:SystemRoot\System32\msiexec.exe,0"
-            $add.Description = 'Add another mint.ca item to WebTrack'
+            $add.Description = 'Watch a different mint.ca item with WebTrack'
             $add.Save()
             $rem = $shell.CreateShortcut((Join-Path $smDir 'WebTrack - uninstall.lnk'))
             $rem.TargetPath = Join-Path $InstallDir '_UNINSTALL.bat'
@@ -170,25 +161,16 @@ try {
     }
 
     # 5. tell the human what is happening
-    $watchList = ($products | ForEach-Object { '  - ' + [string]$_.name }) -join "`r`n"
     $lines = @()
-    if ($already) {
-        $lines += ('You were already watching: {0}' -f $name)
-    } else {
-        $lines += ('ADDED: {0}' -f $name)
-    }
+    $lines += ('WebTrack is now watching: {0}' -f $name)
     $lines += ''
-    $lines += 'Full watch list:'
-    $lines += ''
-    $lines += $watchList
-    $lines += ''
-    $lines += 'It quietly checks every 10 seconds. The moment an item can be ordered you will get a LOUD notification and the page will open by itself so you can buy it.'
+    $lines += 'It quietly checks every 10 seconds. The moment it can be ordered you will get a LOUD notification and the page will open by itself so you can buy it.'
     if (-not $verified) {
         $lines += ''
         $lines += 'Note: that link did not look exactly like a normal product page, but it will be watched anyway.'
     }
     $lines += ''
-    $lines += 'To watch another item later, open "WebTrack - watch another item" from the Start Menu (or run _INSTALL.bat again).'
+    $lines += 'To watch a different item later, open "WebTrack - change watched item" from the Start Menu (or run _INSTALL.bat again). The new link replaces the old one.'
     Show-Message ($lines -join "`r`n") 'WebTrack is running!' 'Information'
     exit 0
 }

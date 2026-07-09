@@ -21,9 +21,9 @@ Windows 10/11 only. No admin rights, no dependencies — plain PowerShell + Task
 1. Click the green **Code** button (top of this page) → **Download ZIP**
 2. Then follow Option A from step 1.
 
-Installing also adds Start Menu entries: **"WebTrack - watch another item"** and **"WebTrack - uninstall"**.
+Installing also adds Start Menu entries: **"WebTrack - change watched item"** and **"WebTrack - uninstall"**.
 
-To watch **another item later**: Start Menu → *WebTrack - watch another item* (or run `_INSTALL.bat` again) and paste the new link.
+To watch a **different item later**: Start Menu → *WebTrack - change watched item* (or run `_INSTALL.bat` again) and paste the new link — it **replaces** the old one; WebTrack always watches exactly what you last entered.
 
 To **uninstall**: Start Menu → *WebTrack - uninstall* (or `_UNINSTALL.bat`). Everything is removed.
 
@@ -51,7 +51,9 @@ The repo keeps it simple on top: `_INSTALL.bat`, `_UNINSTALL.bat`, the zip, and 
 All machinery lives in `app\`:
 
 - `app\Setup-Wizard.ps1` — the install popup: takes a mint.ca link, validates it, grabs the product
-  name from the page, adds it to `products.json`, registers the Task Scheduler job.
+  name from the page, writes it to `products.json` (replacing the previous item), registers the
+  Task Scheduler job. (`products.json` supports multiple entries if edited by hand; the popup
+  always sets exactly one.)
 - `app\Watch-Stock.ps1` — the watcher. Every 10 seconds it downloads each product page and reads the
   `data-pwr-in-stock="True|False"` flag mint.ca embeds in every product page (the page's JSON-LD
   metadata always claims InStock — it lies — so it is ignored). Falls back to ADD TO CART button

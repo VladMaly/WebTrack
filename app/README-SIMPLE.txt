@@ -22,10 +22,11 @@ WHAT IT DOES
   working after the computer restarts. It only pauses while the
   computer is asleep or turned off.
 
-WATCH ANOTHER ITEM
+WATCH A DIFFERENT ITEM
 
-  Open the Start Menu and click "WebTrack - watch another item",
-  then paste the new mint.ca link.
+  Open the Start Menu and click "WebTrack - change watched item",
+  then paste the new mint.ca link. It replaces the old one -
+  WebTrack always watches exactly what you last entered.
 
 UNINSTALL
 

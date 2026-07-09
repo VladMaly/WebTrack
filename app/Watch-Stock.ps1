@@ -101,9 +101,10 @@ function Show-Toast([string]$Title, [string]$Body, [string]$Url, [switch]$Alarm)
         $scenario = ''
         $audio    = '<audio src="ms-winsoundevent:Notification.Default"/>'
         if ($Alarm) {
-            # reminder scenario + looping alarm keeps the toast on screen until dismissed
+            # reminder scenario keeps the toast on screen until dismissed;
+            # normal notification sound (user preference: notification only,
+            # no siren, no popup window, no auto-opening browser)
             $scenario = ' scenario="reminder"'
-            $audio    = '<audio src="ms-winsoundevent:Notification.Looping.Alarm" loop="true"/>'
         }
         $xml = @"
 <toast activationType="protocol" launch="$xUrl"$scenario>
@@ -123,8 +124,14 @@ function Show-Toast([string]$Title, [string]$Body, [string]$Url, [switch]$Alarm)
         $doc = New-Object Windows.Data.Xml.Dom.XmlDocument
         $doc.LoadXml($xml)
         $toast = New-Object Windows.UI.Notifications.ToastNotification($doc)
-        $appId = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe'
-        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($appId).Show($toast)
+        # own notification identity: shows as "WebTrack", and is immune to the
+        # user having turned off notifications for "Windows PowerShell"
+        $aumidKey = 'HKCU:\SOFTWARE\Classes\AppUserModelId\WebTrack.Alerts'
+        if (-not (Test-Path $aumidKey)) {
+            New-Item -Path $aumidKey -Force | Out-Null
+            Set-ItemProperty -Path $aumidKey -Name DisplayName -Value 'WebTrack'
+        }
+        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('WebTrack.Alerts').Show($toast)
         return $true
     } catch {
         Write-Log ('WARN toast failed: {0}' -f $_.Exception.Message)
@@ -292,9 +299,6 @@ foreach ($product in $productList) {
             if ($alertDue) {
                 Write-Log ('ALERT {0} is IN STOCK ({1})' -f $name, $result.Detail)
                 $toastOk = Show-Toast ('IN STOCK: {0}' -f $name) 'Click to open the product page and buy it now.' $url -Alarm
-                if ($isNewlyInStock) {
-                    try { Start-Process $url } catch { Write-Log ('WARN could not open browser: {0}' -f $_.Exception.Message) }
-                }
                 if (-not $toastOk) { Invoke-AlarmFallback }
                 $entry.lastAlertUtc = $now.ToString('o')
             } else {

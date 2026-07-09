@@ -164,7 +164,7 @@ try {
     $lines = @()
     $lines += ('WebTrack is now watching: {0}' -f $name)
     $lines += ''
-    $lines += 'It quietly checks every 10 seconds. The moment it can be ordered you will get a LOUD notification and the page will open by itself so you can buy it.'
+    $lines += 'It quietly checks every 10 seconds. The moment it can be ordered you will get a Windows notification - click it to open the page and buy.'
     if (-not $verified) {
         $lines += ''
         $lines += 'Note: that link did not look exactly like a normal product page, but it will be watched anyway.'

@@ -13,13 +13,12 @@ INSTALL (one time, takes 15 seconds):
 WHAT IT DOES
 
   It checks the mint.ca page every 10 seconds, silently, in the
-  background. The moment the item COMES IN stock:
-
-    - a LOUD notification pops up and stays until you dismiss it
-    - the product page opens in your browser -> buy it!
+  background. The moment the item COMES IN stock, a Windows
+  notification pops up and stays until you dismiss it - click
+  it to open the page and buy.
 
   (If the item is already in stock when you set it up, you just
-  get one quiet note instead of the alarm.)
+  get one regular note.)
 
   The rest of the time you will never see or hear it. It keeps
   working after the computer restarts. It only pauses while the

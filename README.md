@@ -25,7 +25,7 @@ Installing also adds Start Menu entries: **"WebTrack - change watched item"** an
 
 To watch a **different item later**: Start Menu → *WebTrack - change watched item* (or run `_INSTALL.bat` again) and paste the new link — it **replaces** the old one; WebTrack always watches exactly what you last entered.
 
-To **uninstall**: Start Menu → *WebTrack - uninstall* (or `_UNINSTALL.bat`). Everything is removed.
+To **uninstall**: click **Uninstall WebTrack** right on any WebTrack notification, or Start Menu → *WebTrack - uninstall* (or `_UNINSTALL.bat`). Everything is removed.
 
 ## Sharing workflow (for the maintainer)
 

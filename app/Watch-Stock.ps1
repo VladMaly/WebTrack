@@ -116,7 +116,7 @@ function Show-Toast([string]$Title, [string]$Body, [string]$Url, [switch]$Alarm)
   </visual>
   <actions>
     <action content="Open product page" activationType="protocol" arguments="$xUrl"/>
-    <action content="Dismiss" activationType="system" arguments="dismiss"/>
+    <action content="Uninstall WebTrack" activationType="protocol" arguments="webtrack:uninstall"/>
   </actions>
   $audio
 </toast>

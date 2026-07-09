@@ -32,7 +32,8 @@ WATCH A DIFFERENT ITEM
 
 UNINSTALL
 
-  Open the Start Menu and click "WebTrack - uninstall"
+  Click "Uninstall WebTrack" right on any WebTrack notification,
+  or open the Start Menu and click "WebTrack - uninstall"
   (or double-click _UNINSTALL.bat). Everything is removed.
 
 (The "app" folder holds the program files - you never need

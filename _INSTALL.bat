@@ -29,6 +29,7 @@ copy /y "%SRC%\Watch-Stock.ps1"    "%DEST%" >nul
 copy /y "%SRC%\Setup-Wizard.ps1"   "%DEST%" >nul
 copy /y "%SRC%\Install-Task.ps1"   "%DEST%" >nul
 copy /y "%SRC%\Uninstall-Task.ps1" "%DEST%" >nul
+copy /y "%SRC%\Uninstall-Quiet.ps1" "%DEST%" >nul
 copy /y "%SRC%\run-hidden.vbs"     "%DEST%" >nul
 copy /y "%~dp0_INSTALL.bat"        "%DEST%" >nul
 copy /y "%~dp0_UNINSTALL.bat"      "%DEST%" >nul

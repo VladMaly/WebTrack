@@ -158,6 +158,16 @@ try {
             $rem.Description = 'Remove WebTrack completely'
             $rem.Save()
         } catch { }
+
+        # webtrack: protocol makes the notifications' "Uninstall WebTrack" button work
+        try {
+            $protoKey = 'HKCU:\SOFTWARE\Classes\webtrack'
+            New-Item -Path "$protoKey\shell\open\command" -Force | Out-Null
+            Set-ItemProperty -Path $protoKey -Name '(default)' -Value 'URL:WebTrack'
+            Set-ItemProperty -Path $protoKey -Name 'URL Protocol' -Value ''
+            Set-ItemProperty -Path "$protoKey\shell\open\command" -Name '(default)' -Value `
+                ('powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File "{0}" "%1"' -f (Join-Path $InstallDir 'Uninstall-Quiet.ps1'))
+        } catch { }
     }
 
     # 5. tell the human what is happening

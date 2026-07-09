@@ -7,6 +7,8 @@ echo.
 powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Unregister-ScheduledTask -TaskName 'WebTrack Stock Watcher' -Confirm:$false -ErrorAction Stop; Write-Host '  Background task removed.' } catch { Write-Host '  No watcher task found - nothing to remove.' }"
 
 rd /s /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\WebTrack" 2>nul
+reg delete "HKCU\Software\Classes\webtrack" /f >nul 2>&1
+reg delete "HKCU\Software\Classes\AppUserModelId\WebTrack.Alerts" /f >nul 2>&1
 
 set "DEST=%LOCALAPPDATA%\WebTrack"
 if /i not "%~dp0"=="%DEST%\" (

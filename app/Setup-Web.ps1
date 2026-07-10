@@ -17,13 +17,34 @@ $DefaultIntervalSeconds = 90
 $WinW = 560; $WinH = 640   # compact setup window (not full height)
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
 
-# tiny Win32 helper just to close our setup window by title when setup finishes
+# Win32 helper to size and close our setup window. Edge ignores --window-size for
+# app windows (it restores a remembered maximized state), so we un-maximize and
+# resize it ourselves once it appears, matching it by title.
 try {
     Add-Type @'
-using System; using System.Runtime.InteropServices;
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
 public static class WtWin {
-  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindow(string c, string t);
+  public delegate bool EnumProc(IntPtr h, IntPtr p);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr p);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int max);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+  [DllImport("user32.dll")] public static extern int GetSystemMetrics(int i);
   [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+  public static IntPtr Find(string contains) {
+    IntPtr found = IntPtr.Zero;
+    EnumWindows((h, p) => {
+      if (!IsWindowVisible(h)) return true;
+      var sb = new StringBuilder(256);
+      GetWindowText(h, sb, 256);
+      if (sb.ToString().IndexOf(contains, StringComparison.OrdinalIgnoreCase) >= 0) { found = h; return false; }
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
 }
 '@
 } catch { }
@@ -190,14 +211,29 @@ function Open-SetupWindow([string]$Url) {
     Start-Process $Url   # default browser, normal tab
 }
 
-# close our setup window by its title (app-mode window title == the page <title>),
-# so we shut only our window without touching the rest of the user's browser
+# un-maximize and size our setup window to a compact centered box (retries while
+# the window/title is still loading)
+function Resize-SetupWindow {
+    try {
+        $sw = [WtWin]::GetSystemMetrics(0); $sh = [WtWin]::GetSystemMetrics(1)
+        $x = [Math]::Max(0, [int](($sw - $WinW) / 2)); $y = [Math]::Max(0, [int](($sh - $WinH) / 2))
+        for ($i = 0; $i -lt 15; $i++) {
+            $h = [WtWin]::Find('WebTrack setup')
+            if ($h -ne [IntPtr]::Zero) {
+                [void][WtWin]::ShowWindow($h, 9)   # SW_RESTORE (un-maximize)
+                [void][WtWin]::SetWindowPos($h, [IntPtr]::Zero, $x, $y, $WinW, $WinH, 0x0044)  # SHOWWINDOW|NOZORDER
+                return
+            }
+            Start-Sleep -Milliseconds 200
+        }
+    } catch { }
+}
+
+# close our setup window by its title, without touching the rest of the browser
 function Close-SetupWindow {
     try {
-        foreach ($t in 'WebTrack setup complete', 'WebTrack setup') {
-            $h = [WtWin]::FindWindow($null, $t)
-            if ($h -ne [IntPtr]::Zero) { [void][WtWin]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }  # WM_CLOSE
-        }
+        $h = [WtWin]::Find('WebTrack setup')
+        if ($h -ne [IntPtr]::Zero) { [void][WtWin]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }  # WM_CLOSE
     } catch { }
 }
 
@@ -239,6 +275,7 @@ try {
                 $everConnected = $true
                 if ($method -eq 'GET') {
                     Send-Response $stream 200 'text/html' (Get-Page $token $SuggestedUrl '')
+                    if (-not $NoBrowser) { Resize-SetupWindow }   # shrink the window now it's shown
                 }
                 elseif ($method -eq 'POST') {
                     $bodyStart = $req.IndexOf("`r`n`r`n")

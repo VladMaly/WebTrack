@@ -97,11 +97,14 @@ function Get-ResultPage([string]$Title, [string]$Body, [bool]$Ok) {
   .card{background:var(--card);max-width:520px;border-radius:16px;padding:36px;text-align:center;
     box-shadow:0 10px 40px rgba(0,0,0,.12);border:1px solid var(--border);border-top:5px solid $accent;}
   h1{margin:0 0 12px;font-size:22px;} p{color:var(--muted);font-size:15px;line-height:1.6;white-space:pre-wrap;margin:0;}
-  .big{font-size:44px;margin-bottom:8px;}
+  .big{font-size:52px;margin-bottom:8px;line-height:1;} .closing{color:var(--muted);font-size:12px;margin-top:20px;}
 </style></head><body><div class='card'>
-  <div class='big'>$(if($Ok){'✅'}else{'⚠️'})</div>
+  <div class='big'>$(if($Ok){'&#9989;'}else{'&#9888;'})</div>
   <h1>$(HtmlEncode $Title)</h1><p>$(HtmlEncode $Body)</p>
-</div></body></html>
+  $(if($Ok){"<p class='closing'>This window closes automatically...</p>"})
+</div>
+$(if($Ok){"<script>setTimeout(function(){window.close();},3500);</script>"})
+</body></html>
 "@
 }
 

@@ -1,26 +1,8 @@
 @echo off
-setlocal
-title WebTrack - Uninstall
-echo.
-echo  Removing the WebTrack background watcher...
-echo.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Unregister-ScheduledTask -TaskName 'WebTrack Stock Watcher' -Confirm:$false -ErrorAction Stop; Write-Host '  Background task removed.' } catch { Write-Host '  No watcher task found - nothing to remove.' }"
-
-rd /s /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\WebTrack" 2>nul
-reg delete "HKCU\Software\Classes\webtrack" /f >nul 2>&1
-reg delete "HKCU\Software\Classes\AppUserModelId\WebTrack.Alerts" /f >nul 2>&1
-
-set "DEST=%LOCALAPPDATA%\WebTrack"
-if /i not "%~dp0"=="%DEST%\" (
-    if exist "%DEST%" (
-        rd /s /q "%DEST%"
-        echo  Installed files deleted.
-    )
-) else (
-    echo  You can also delete this folder if you want:
-    echo  %DEST%
-)
-echo.
-echo  WebTrack is uninstalled. No more checks, no more alerts.
-echo.
-pause
+rem Thin launcher: runs the uninstall HIDDEN (no console window). It removes the
+rem background task, Start Menu entries, registry keys and installed files, then
+rem shows a "WebTrack is uninstalled" notification.
+set "Q=%~dp0Uninstall-Quiet.ps1"
+if not exist "%Q%" set "Q=%~dp0app\Uninstall-Quiet.ps1"
+start "" powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%Q%"
+exit

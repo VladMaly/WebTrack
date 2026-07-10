@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Path (Join-Path $stage 'app') -Force | Out-Null
 Copy-Item (Join-Path $Root '_INSTALL.bat')      $stage
 Copy-Item (Join-Path $Root '_UNINSTALL.bat')    $stage
 Copy-Item (Join-Path $App 'README-SIMPLE.txt')  $stage
-foreach ($f in 'Setup-Wizard.ps1', 'Watch-Stock.ps1', 'Install-Task.ps1', 'Uninstall-Task.ps1', 'Uninstall-Quiet.ps1', 'run-hidden.vbs') {
+foreach ($f in 'Setup-Web.ps1', 'Setup-Wizard.ps1', 'Watch-Stock.ps1', 'Install-Task.ps1', 'Uninstall-Task.ps1', 'Uninstall-Quiet.ps1', 'run-hidden.vbs') {
     Copy-Item (Join-Path $App $f) (Join-Path $stage 'app')
 }
 

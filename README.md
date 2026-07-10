@@ -16,7 +16,7 @@ Windows 10/11 only. No admin rights, no dependencies — plain PowerShell + Task
 **Option A — you were sent `WebTrack-Setup.zip`:**
 1. Extract it (right-click → *Extract All*)
 2. Double-click **`_INSTALL.bat`**
-3. A small window pops up with the coin link pre-filled — keep it or paste any other mint.ca product link, pick how often to check (30 seconds is the safe default), and click **Start watching**. Done.
+3. A **setup page opens in your browser** with the coin link pre-filled — keep it or paste any other mint.ca product link, pick how often to check (90 seconds is the safe default), and click **Start watching**. Done.
 
 **Option B — you were sent this GitHub link:**
 1. Click the green **Code** button (top of this page) → **Download ZIP**
@@ -51,10 +51,14 @@ git push
 The repo keeps it simple on top: `_INSTALL.bat`, `_UNINSTALL.bat`, the zip, and this README.
 All machinery lives in `app\`:
 
-- `app\Setup-Wizard.ps1` — the install popup: takes a mint.ca link + a check interval (seconds or
-  minutes), validates the link, grabs the product name from the page, writes it to `products.json`
-  (replacing the previous item), registers the Task Scheduler job. (`products.json` supports
-  multiple entries if edited by hand; the popup always sets exactly one.)
+- `app\Setup-Web.ps1` — the setup UI. Serves a small styled HTML page on a loopback port
+  (`127.0.0.1`, OS-assigned port, GUID token in the path), opens it in the default browser, and
+  hands the chosen link/interval to `Setup-Wizard.ps1`. No compile, no dependencies — the browser
+  the user already has renders it. `_INSTALL.bat` falls back to the WinForms popup if it can't start.
+- `app\Setup-Wizard.ps1` — the install engine (also the WinForms fallback UI): takes a mint.ca link
+  + a check interval, validates the link, grabs the product name, writes `products.json` (replacing
+  the previous item), registers the Task Scheduler job, Start Menu entries, and the `webtrack:`
+  protocol handler. (`products.json` supports multiple entries if edited by hand; setup sets one.)
 - `app\Watch-Stock.ps1` — the watcher. On each run it downloads the product page and reads the
   `data-pwr-in-stock="True|False"` flag mint.ca embeds in every product page (the page's JSON-LD
   metadata always claims InStock — it lies — so it is ignored). Falls back to ADD TO CART button

@@ -5,11 +5,11 @@ INSTALL (one time, takes 15 seconds):
 
   1. Extract this ZIP anywhere  (right-click -> Extract All)
   2. Open the extracted folder and double-click  _INSTALL.bat
-  3. A small window pops up with the coin link already filled in.
-     Keep it (or paste a different mint.ca link), pick how often
-     to check (30 seconds is a safe default), and click
+  3. A setup page opens in your browser with the coin link already
+     filled in. Keep it (or paste a different mint.ca link), pick
+     how often to check (90 seconds is a safe default), and click
      "Start watching".
-  4. Done. You can delete the ZIP and the extracted folder.
+  4. Done. You can close the tab and delete the ZIP and folder.
 
 WHAT IT DOES
 

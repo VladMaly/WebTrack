@@ -88,7 +88,7 @@ function Get-ResultPage([string]$Title, [string]$Body, [bool]$Ok) {
     $accent = if ($Ok) { '#0a7d3c' } else { '#a12020' }
     @"
 <!doctype html><html><head><meta charset='utf-8'>
-<meta name='viewport' content='width=device-width, initial-scale=1'><title>WebTrack</title>
+<meta name='viewport' content='width=device-width, initial-scale=1'><title>WebTrack setup complete</title>
 <style>
   :root{--bg:#f4f5f7;--card:#fff;--text:#1c1e21;--muted:#6b7280;--border:#e2e4e8;}
   @media (prefers-color-scheme: dark){:root{--bg:#15171c;--card:#1e2127;--text:#e8eaed;--muted:#9aa0aa;--border:#2c3038;}}
@@ -159,12 +159,10 @@ function ConvertFrom-Form([string]$Body) {
 }
 
 $token = [Guid]::NewGuid().ToString('N')
-# isolated browser profile so (a) the setup window is a clean instance separate
-# from the user's tabs and (b) we can reliably close JUST our window afterwards
-$UiProfile = Join-Path $env:TEMP ('webtrack-ui-' + $token)
 
 # open the setup page as a clean standalone window (Edge/Chrome "app mode" - no
-# tabs, no address bar). Fall back to the default browser (a normal tab).
+# tabs, no address bar) using the user's NORMAL profile (no fresh-profile onboarding
+# or sync prompt). Fall back to the default browser (a normal tab).
 function Open-SetupWindow([string]$Url) {
     $candidates = @(
         (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'),
@@ -174,27 +172,31 @@ function Open-SetupWindow([string]$Url) {
     )
     foreach ($exe in $candidates) {
         if ($exe -and (Test-Path $exe)) {
-            try {
-                Start-Process $exe -ArgumentList @(
-                    ('--app={0}' -f $Url),
-                    ('--user-data-dir={0}' -f $UiProfile),
-                    '--no-first-run', '--no-default-browser-check', '--window-size=580,720'
-                )
-                return
-            } catch { }
+            try { Start-Process $exe -ArgumentList ('--app={0}' -f $Url), '--window-size=580,720'; return } catch { }
         }
     }
-    Start-Process $Url   # default browser, normal tab (can't be auto-closed)
+    Start-Process $Url   # default browser, normal tab
 }
 
-# close only the setup window we opened (matched by our unique profile dir)
+# close our setup window by its title (app-mode window title == the page <title>),
+# so we shut only our window without touching the rest of the user's browser
 function Close-SetupWindow {
     try {
-        Get-CimInstance Win32_Process -Filter "Name='msedge.exe' OR Name='chrome.exe'" |
-            Where-Object { $_.CommandLine -like "*$UiProfile*" } |
-            ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        if (-not ([System.Management.Automation.PSTypeName]'WtWin').Type) {
+            Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class WtWin {
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindow(string c, string t);
+  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+}
+'@
+        }
+        foreach ($t in 'WebTrack setup complete', 'WebTrack setup') {
+            $h = [WtWin]::FindWindow($null, $t)
+            if ($h -ne [IntPtr]::Zero) { [void][WtWin]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }  # WM_CLOSE
+        }
     } catch { }
-    try { Remove-Item $UiProfile -Recurse -Force -ErrorAction SilentlyContinue } catch { }
 }
 
 $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, 0)

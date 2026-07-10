@@ -132,9 +132,18 @@ function Get-CleanUrl([string]$Raw) {
     if ([string]::IsNullOrWhiteSpace($Raw)) { return $null }
     $u = $Raw.Trim().Trim('"')
     if (([regex]::Matches($u, 'https?://')).Count -gt 1) { return $null }   # two links mashed together
-    $q = $u.IndexOf('?'); if ($q -ge 0) { $u = $u.Substring(0, $q) }
-    $h = $u.IndexOf('#'); if ($h -ge 0) { $u = $u.Substring(0, $h) }
-    if ($u -notmatch '^https?://(www\.)?mint\.ca/.+') { return $null }
+    $h = $u.IndexOf('#'); if ($h -ge 0) { $u = $u.Substring(0, $h) }        # drop #fragment
+    # strip tracking params but keep meaningful ones (e.g. Shopify ?variant=123)
+    $qi = $u.IndexOf('?')
+    if ($qi -ge 0) {
+        $base = $u.Substring(0, $qi); $keep = @()
+        foreach ($p in $u.Substring($qi + 1).Split('&')) {
+            $name = ($p.Split('=')[0]).ToLower()
+            if ($name -and -not ($name -match '^utm_' -or $name -in @('srsltid','fbclid','gclid','gclsrc','dclid','msclkid','mc_eid','igshid','ref','ref_','si','_ga'))) { $keep += $p }
+        }
+        $u = if ($keep.Count) { $base + '?' + ($keep -join '&') } else { $base }
+    }
+    if ($u -notmatch '^https?://[^\s/]+\.[^\s/]+') { return $null }   # any real http(s) product link
     return $u
 }
 
@@ -142,8 +151,8 @@ try {
     # 1. get the link + how often to check
     $clean = $null
     if ($Interactive) {
-        $prefill = $SuggestedUrl   # pre-filled with the Rose Window coin; replace it with any mint.ca link
-        $msg = 'This is the item WebTrack will watch. Keep it, or paste a different mint.ca link, then click Start watching:'
+        $prefill = $SuggestedUrl   # pre-filled with the Rose Window coin; replace it with any store's product link
+        $msg = 'This is the item WebTrack will watch. Keep it, or paste any store product link, then click Start watching:'
         while ($true) {
             $answer = Read-SetupDialog $msg $prefill
             if ($null -eq $answer) { exit 0 }
@@ -154,11 +163,11 @@ try {
                 break
             }
             $prefill = $answer.Url
-            $msg = "That doesn't look like a mint.ca link (it should start with https://www.mint.ca/). Please paste the full link from your browser's address bar:"
+            $msg = "That doesn't look like a product link. Please paste the full https:// link from your browser's address bar:"
         }
     } else {
         $clean = Get-CleanUrl $Url
-        if (-not $clean) { Write-Host 'ERROR: not a valid mint.ca link.'; exit 2 }
+        if (-not $clean) { Write-Host 'ERROR: not a valid product link.'; exit 2 }
     }
 
     # clamp the interval to a sane floor (blank/0 -> researched default)
@@ -212,7 +221,7 @@ try {
             $add.TargetPath = Join-Path $InstallDir '_INSTALL.bat'
             $add.WorkingDirectory = $InstallDir
             $add.IconLocation = "$env:SystemRoot\System32\msiexec.exe,0"
-            $add.Description = 'Watch a different mint.ca item with WebTrack'
+            $add.Description = 'Watch a different item with WebTrack'
             $add.Save()
             $rem = $shell.CreateShortcut((Join-Path $smDir 'WebTrack - uninstall.lnk'))
             $rem.TargetPath = Join-Path $InstallDir '_UNINSTALL.bat'

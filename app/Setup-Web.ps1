@@ -93,12 +93,12 @@ function Get-Page([string]$Token, [string]$Prefill, [string]$ErrorMsg) {
   .foot { text-align:center; color:var(--muted); font-size:12px; margin-top:18px; }
 </style></head><body>
   <form class='card' method='POST' action='/$Token/save'>
-    <h1>Watch a Mint item</h1>
-    <p class='sub'>WebTrack pings you the moment it comes in stock.</p>
+    <h1>Watch an item for stock</h1>
+    <p class='sub'>WebTrack pings you the moment it comes in stock. Works with most online stores.</p>
     $err
-    <label for='url'>Product link (mint.ca)</label>
+    <label for='url'>Product page link</label>
     <input type='url' id='url' name='url' value='$pf' required autofocus
-      onfocus='this.select()' placeholder='https://www.mint.ca/en/shop/coins/...'>
+      onfocus='this.select()' placeholder='paste any store product page link'>
     <label>Check for stock every</label>
     <div class='row'>
       <input class='num' type='number' name='interval' value='$DefaultIntervalSeconds' min='1' max='999' required>
@@ -291,7 +291,7 @@ try {
                     # chars - reject those before spawning the installer (blocks arg
                     # injection and the empty-url case that would hang the wizard)
                     if ([string]::IsNullOrWhiteSpace($rawUrl) -or $rawUrl -match '[\s"\\\x00-\x1f]') {
-                        Send-Response $stream 200 'text/html' (Get-Page $token $rawUrl "That doesn't look like a valid mint.ca link.")
+                        Send-Response $stream 200 'text/html' (Get-Page $token $rawUrl "That doesn't look like a valid product link. Paste the full link from your browser's address bar.")
                     } else {
                         $wizard = Join-Path $InstallDir 'Setup-Wizard.ps1'
                         $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $wizard `
@@ -303,7 +303,7 @@ try {
                             $done = $true   # set before the write, so a closed tab still ends cleanly
                             Send-Response $stream 200 'text/html' (Get-ResultPage 'WebTrack is running!' $msg $true)
                         } else {
-                            $errText = if ($msg) { $msg } else { "That doesn't look like a valid mint.ca link." }
+                            $errText = if ($msg) { $msg } else { "That doesn't look like a valid product link. Paste the full link from your browser's address bar." }
                             Send-Response $stream 200 'text/html' (Get-Page $token $rawUrl $errText)
                         }
                     }

@@ -14,23 +14,25 @@
 >
 > **Net result:** a modern-looking, background stock watcher that installs from a **~24 KB zip**, needs **no admin rights, no dependencies, no code-signing, and throws no security warnings** — on Windows. (This free trick is Windows-only; macOS charges the $99/yr signing tax no matter what.)
 
-Watches [mint.ca](https://www.mint.ca) product pages and alerts the moment an item comes in stock:
+Watches **any online store's** product page and alerts the moment an item comes in stock. Built for [mint.ca](https://www.mint.ca) (the Royal Canadian Mint) but the detector is generic — it reads add-to-cart / sold-out wording, `schema.org` availability, and platform hints, so it works on most e-commerce sites (Shopify, WooCommerce, Magento, and custom carts). Paste any product link:
 
 - **Persistent Windows notification** (stays on screen until dismissed) — click it to open the product page
 - **You choose how often it checks** (seconds or minutes) with an optional ±20% randomizer so it doesn't look like a bot — 90 s is the researched safe default
 - Re-alerts every 15 minutes while the item stays in stock
 - If the item is **already in stock when you set it up**, you get one regular heads-up instead
-- If mint.ca throws up a queue/bot-check page (common during hot releases), it alarms immediately — that often means a drop is live
+- If a site throws up a queue/bot-check page (common during hot releases), it alarms immediately — that often means a drop is live
 - Warns you if checks keep failing or `products.json` breaks, so it never fails silently
 
 Windows 10/11 only. No admin rights, no dependencies — plain PowerShell + Task Scheduler.
+
+> **Multi-site caveat:** detection is best-effort across stores. It's rock-solid on mint.ca and reliable on sites whose stock state is in the raw HTML. On sites that render the buy button with JavaScript (some Shopify/SPAs), the raw page has no signal, so WebTrack reports "can't tell" (and warns) rather than guessing wrong — a per-site tweak may be needed there.
 
 ## Install (for everyone)
 
 **Option A — you were sent `WebTrack-Setup.zip`:**
 1. Extract it (right-click → *Extract All*)
 2. Double-click **`_INSTALL.bat`**
-3. A **setup page opens in your browser** with the coin link pre-filled — keep it or paste any other mint.ca product link, pick how often to check (90 seconds is the safe default), and click **Start watching**. Done.
+3. A **setup page opens in your browser** with a link pre-filled — keep it or paste **any store's** product link, pick how often to check (90 seconds is the safe default), and click **Start watching**. Done.
 
 **Option B — you were sent this GitHub link:**
 1. Click the green **Code** button (top of this page) → **Download ZIP**

@@ -24,7 +24,9 @@ $RecentFailWindowMin = 60   # sliding window for counting intermittent failures
 $RecentFailLimit     = 8    # intermittent failures within the window that trigger a warning
 $ProblemReAlertHrs   = 1
 # signatures of queue/challenge/block pages served instead of the product page
-$BlockSignatures     = 'queue-it|queueit|Just a moment|cf-chl|challenge-platform|challenge-form|Access Denied|captcha|Pardon Our Interruption'
+# specific queue/challenge markers only - NOT bare "captcha" (a normal page may embed a
+# reCAPTCHA form widget) which would false-flag a healthy product page as blocked
+$BlockSignatures     = 'queue-it|queueit|Just a moment\.\.\.|cf-chl|challenge-platform|challenges\.cloudflare|Pardon Our Interruption|Attention Required! \| Cloudflare'
 
 # curl.exe emits UTF-8; decode it as such regardless of console codepage
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
@@ -92,18 +94,49 @@ function Get-PageStatus([string]$Url) {
     if ([string]::IsNullOrWhiteSpace($html)) {
         return @{ Status = 'FETCH_ERROR'; Detail = 'curl exit code 0 but empty response body' }
     }
-    # exactly one data-pwr-in-stock flag exists per product page (verified 2026-07)
+    # ----- generic stock detection (works on most e-commerce product pages) -----
+    # Checked most-trustworthy first. No universal "add to cart" selector exists
+    # across platforms, so we layer several signals and trust wording over the
+    # structured data (which is often stale/wrong - mint.ca's always says InStock).
+
+    # 1. Site-specific truthful flag. mint.ca embeds data-pwr-in-stock and, unlike
+    #    its lying JSON-LD, it is accurate - so it wins outright when present.
     if ($html -match 'data-pwr-in-stock="True"')  { return @{ Status = 'IN_STOCK'; Detail = 'data-pwr-in-stock=True' } }
     if ($html -match 'data-pwr-in-stock="False"') {
-        if ($html -match 'AWAITING\s+STOCK') { return @{ Status = 'AWAITING_STOCK'; Detail = '' } }
-        if ($html -match 'SOLD\s+OUT')       { return @{ Status = 'SOLD_OUT'; Detail = '' } }
-        return @{ Status = 'OUT_OF_STOCK'; Detail = '' }
+        if ($html -match 'AWAITING\s+STOCK') { return @{ Status = 'AWAITING_STOCK'; Detail = 'data-pwr-in-stock=False' } }
+        return @{ Status = 'SOLD_OUT'; Detail = 'data-pwr-in-stock=False' }
     }
-    # page layout changed: fall back to button text, favouring alerts over silence
-    if ($html -match 'ADD\s+TO\s+CART') { return @{ Status = 'IN_STOCK'; Detail = 'fallback match on ADD TO CART text' } }
-    # queue/challenge page served instead of the product page - often means a live drop
+
+    # 2. Explicit out-of-stock / restock-prompt wording. Shown almost only for
+    #    genuinely unavailable items, so we trust it over an "add to cart" that
+    #    might belong to a related-products carousel.
+    $outWords = 'out[\s_-]*of[\s_-]*stock|sold[\s_-]*out|awaiting\s+stock|no\s+longer\s+available|' +
+                'currently\s+unavailable|temporarily\s+(out|unavailable)|coming\s+soon|' +
+                'notify\s+me\s+when|e-?mail\s+me\s+when|email\s+when\s+(it\s+is\s+)?(back|available)|join\s+the\s+waitlist'
+    if ($html -match $outWords) {
+        $w = ($Matches[0] -replace '\s+', ' ')
+        $st = if ($w -match 'awaiting|coming') { 'AWAITING_STOCK' } else { 'OUT_OF_STOCK' }
+        return @{ Status = $st; Detail = ("out-of-stock wording: '{0}'" -f $w) }
+    }
+
+    # 3. An add-to-cart / buy action = orderable now (covers Shopify, WooCommerce,
+    #    Magento, BigCommerce and most custom carts).
+    if ($html -match 'add[\s_-]*to[\s_-]*(cart|bag|basket|tote)|add-?cart|buy\s+it\s+now') {
+        return @{ Status = 'IN_STOCK'; Detail = ("in-stock wording: '{0}'" -f ($Matches[0] -replace '\s+', ' ')) }
+    }
+
+    # 4. schema.org / JSON-LD availability - last resort (can be stale or wrong).
+    if ($html -match '"availability"\s*:\s*"[^"]*(InStock|BackOrder|PreOrder|LimitedAvailability)"') {
+        return @{ Status = 'IN_STOCK'; Detail = 'schema.org availability=InStock' }
+    }
+    if ($html -match '"availability"\s*:\s*"[^"]*(OutOfStock|SoldOut|Discontinued)"') {
+        return @{ Status = 'OUT_OF_STOCK'; Detail = 'schema.org availability=OutOfStock' }
+    }
+
+    # 5. Queue/challenge page served instead of the product page - often a live drop.
     if ($html -match $BlockSignatures) { return @{ Status = 'BLOCKED'; Detail = ('block page signature: {0}' -f $Matches[0]) } }
-    return @{ Status = 'UNKNOWN'; Detail = 'no stock markers found in page' }
+
+    return @{ Status = 'UNKNOWN'; Detail = 'no add-to-cart or stock wording found' }
 }
 
 function Show-Toast([string]$Title, [string]$Body, [string]$Url, [switch]$Alarm) {

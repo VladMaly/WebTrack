@@ -67,25 +67,30 @@ git push
 The repo keeps it simple on top: `_INSTALL.bat`, `_UNINSTALL.bat`, the zip, and this README.
 All machinery lives in `app\`:
 
+- `app\Setup-Bootstrap.ps1` — the hidden orchestrator `_INSTALL.bat` launches (so no console window
+  lingers): copies the files, runs `Setup-Web.ps1`, and falls back to the WinForms popup if the
+  browser page can't open.
 - `app\Setup-Web.ps1` — the setup UI. Serves a small styled HTML page on a loopback port
-  (`127.0.0.1`, OS-assigned port, GUID token in the path), opens it in the default browser, and
-  hands the chosen link/interval to `Setup-Wizard.ps1`. No compile, no dependencies — the browser
-  the user already has renders it. `_INSTALL.bat` falls back to the WinForms popup if it can't start.
-- `app\Setup-Wizard.ps1` — the install engine (also the WinForms fallback UI): takes a mint.ca link
-  + a check interval, validates the link, grabs the product name, writes `products.json` (replacing
-  the previous item), registers the Task Scheduler job, Start Menu entries, and the `webtrack:`
-  protocol handler. (`products.json` supports multiple entries if edited by hand; setup sets one.)
-- `app\Watch-Stock.ps1` — the watcher. On each run it downloads the product page and reads the
-  `data-pwr-in-stock="True|False"` flag mint.ca embeds in every product page (the page's JSON-LD
-  metadata always claims InStock — it lies — so it is ignored). Falls back to ADD TO CART button
-  text if the layout ever changes, and recognizes queue/challenge pages as a "check now" event.
+  (`127.0.0.1`, OS-assigned port, GUID token in the path), opens it as a clean app window in
+  Edge/Chrome (falls back to the default browser tab), sizes/centres it, and auto-closes it when
+  setup finishes. Hands the chosen link/interval to `Setup-Wizard.ps1`. No compile, no dependencies.
+- `app\Setup-Wizard.ps1` — the install engine (also the WinForms fallback UI): takes a product link
+  + a check interval, validates/cleans the link (any http(s) store URL; strips tracking params),
+  grabs the product name, writes `products.json` (replacing the previous item), registers the Task
+  Scheduler job, Start Menu entries, and the `webtrack:` protocol handler.
+- `app\Watch-Stock.ps1` — the watcher. On each run it downloads the product page and runs a layered
+  detector (most-trustworthy first): a site-specific flag (mint.ca's `data-pwr-in-stock`) →
+  out-of-stock / restock wording → add-to-cart wording → `schema.org` availability → queue/challenge
+  page. Wording is trusted over structured data (mint.ca's JSON-LD always claims InStock — it lies).
+  Sites that render the buy button with JavaScript yield `UNKNOWN` rather than a wrong answer.
 - Everything lives in `%LOCALAPPDATA%\WebTrack` after install: `products.json` (watch list),
   `state.json` (last known status), `watch.log` (history).
 - The scheduled task **"WebTrack Stock Watcher"** runs `run-hidden.vbs` → hidden PowerShell while
-  the user is logged in, surviving reboots. Interval is chosen in the popup; **30 seconds is the
-  default** (a safe rate that won't get the IP rate-limited — see below). Task Scheduler cannot
-  repeat faster than 1 minute, so `Install-Task.ps1 -IntervalSeconds N` handles sub-minute rates by
-  bursting `round(60/N)` checks per minute and ≥1-minute rates with a repeating trigger.
+  the user is logged in, surviving reboots. Interval is chosen in the popup; **90 seconds is the
+  default** (a safe rate that won't get the IP rate-limited — see below). Task Scheduler can't repeat
+  faster than 1 minute, so `Install-Task.ps1 -IntervalSeconds N` picks a whole-minute trigger window
+  that divides evenly by N and bursts that many checks per run (e.g. 90 s = 2 checks per 3-min
+  window; 20 s = 3 checks per minute), with optional ±20% jitter.
 - Test the alert notification: `Watch-Stock.ps1 -TestAlert`
 
 ### Why 90 seconds is the default (researched 2026-07)
@@ -115,5 +120,9 @@ so you can step in yourself.
 
 - Alerts only fire while you're **logged in with the PC awake** — checks pause while the machine
   sleeps (buying needs you at the keyboard anyway).
-- Windows **Do Not Disturb / Focus Assist** can mute the notification — the browser still opens.
-- mint.ca only. Other retailers need their own detection logic.
+- Windows **Do Not Disturb / Focus Assist** can mute the notification — since the notification is the
+  only alert channel, check that WebTrack is allowed in Windows notification settings.
+- **JavaScript-rendered stores** (headless Shopify / SPAs like Allbirds): the buy button isn't in the
+  downloaded HTML, so WebTrack reports `UNKNOWN` (and warns) instead of guessing. Reading those would
+  need a headless browser — a heavy dependency deliberately left out. Static-HTML sites and mint.ca
+  work out of the box.

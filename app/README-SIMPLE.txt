@@ -1,19 +1,23 @@
-WebTrack - Royal Canadian Mint stock watcher
-============================================
+WebTrack - online store stock watcher
+=====================================
+
+Watches a product page at any online store (built for the Royal
+Canadian Mint, mint.ca, but works on most shops) and alerts you
+the moment it comes in stock.
 
 INSTALL (one time, takes 15 seconds):
 
   1. Extract this ZIP anywhere  (right-click -> Extract All)
   2. Open the extracted folder and double-click  _INSTALL.bat
-  3. A setup page opens in your browser with the coin link already
-     filled in. Keep it (or paste a different mint.ca link), pick
+  3. A setup page opens in your browser with a link already
+     filled in. Keep it (or paste any store's product link), pick
      how often to check (90 seconds is a safe default), and click
      "Start watching".
   4. Done. You can close the tab and delete the ZIP and folder.
 
 WHAT IT DOES
 
-  It checks the mint.ca page on the schedule you picked, silently,
+  It checks the product page on the schedule you picked, silently,
   in the background. The moment the item COMES IN stock, a Windows
   notification pops up and stays until you dismiss it - click
   it to open the page and buy.
@@ -28,7 +32,7 @@ WHAT IT DOES
 WATCH A DIFFERENT ITEM
 
   Open the Start Menu and click "WebTrack - change watched item",
-  then paste the new mint.ca link. It replaces the old one -
+  then paste the new product link. It replaces the old one -
   WebTrack always watches exactly what you last entered.
 
 UNINSTALL

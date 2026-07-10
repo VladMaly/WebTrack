@@ -14,7 +14,19 @@ $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 if (-not $InstallDir) { $InstallDir = Join-Path $env:LOCALAPPDATA 'WebTrack' }
 $SuggestedUrl           = 'https://www.mint.ca/en/shop/coins/2026/rose-window-notre-dame-2026-fine-silver-coin'
 $DefaultIntervalSeconds = 90
+$WinW = 560; $WinH = 640   # compact setup window (not full height)
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch { }
+
+# tiny Win32 helper just to close our setup window by title when setup finishes
+try {
+    Add-Type @'
+using System; using System.Runtime.InteropServices;
+public static class WtWin {
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindow(string c, string t);
+  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+}
+'@
+} catch { }
 
 function HtmlEncode([string]$s) {
     if ($null -eq $s) { return '' }
@@ -172,7 +184,7 @@ function Open-SetupWindow([string]$Url) {
     )
     foreach ($exe in $candidates) {
         if ($exe -and (Test-Path $exe)) {
-            try { Start-Process $exe -ArgumentList ('--app={0}' -f $Url), '--window-size=580,720'; return } catch { }
+            try { Start-Process $exe -ArgumentList ('--app={0}' -f $Url), ('--window-size={0},{1}' -f $WinW, $WinH); return } catch { }
         }
     }
     Start-Process $Url   # default browser, normal tab
@@ -182,16 +194,6 @@ function Open-SetupWindow([string]$Url) {
 # so we shut only our window without touching the rest of the user's browser
 function Close-SetupWindow {
     try {
-        if (-not ([System.Management.Automation.PSTypeName]'WtWin').Type) {
-            Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-public static class WtWin {
-  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindow(string c, string t);
-  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
-}
-'@
-        }
         foreach ($t in 'WebTrack setup complete', 'WebTrack setup') {
             $h = [WtWin]::FindWindow($null, $t)
             if ($h -ne [IntPtr]::Zero) { [void][WtWin]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }  # WM_CLOSE

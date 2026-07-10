@@ -29,11 +29,16 @@ foreach ($k in 'HKCU:\SOFTWARE\Classes\webtrack', 'HKCU:\SOFTWARE\Classes\AppUse
     try { Remove-Item $k -Recurse -Force -ErrorAction Stop } catch { }
 }
 
-# delete the install folder last - this script lives inside it
+# delete the install folder last - ONLY ever the real install dir, never wherever
+# this script happens to be run from (a safety guard: deleting an arbitrary folder
+# would be catastrophic if this is ever launched from a source/dev copy)
+$installDir = Join-Path $env:LOCALAPPDATA 'WebTrack'
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $env:TEMP
-try {
-    Remove-Item $dir -Recurse -Force -ErrorAction Stop
-} catch {
-    Start-Process cmd.exe -ArgumentList ('/c ping -n 3 127.0.0.1 >nul & rd /s /q "{0}"' -f $dir) -WindowStyle Hidden
+if ($dir.TrimEnd('\') -ieq $installDir.TrimEnd('\')) {
+    Set-Location $env:TEMP
+    try {
+        Remove-Item $installDir -Recurse -Force -ErrorAction Stop
+    } catch {
+        Start-Process cmd.exe -ArgumentList ('/c ping -n 3 127.0.0.1 >nul & rd /s /q "{0}"' -f $installDir) -WindowStyle Hidden
+    }
 }

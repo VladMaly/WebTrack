@@ -158,9 +158,13 @@ function ConvertFrom-Form([string]$Body) {
     return $h
 }
 
-# open the setup page. Prefer Edge/Chrome "app mode" (--app=) so it appears as a
-# clean standalone window - no tabs, no address bar - using the modern browser
-# engine. Fall back to the default browser (a normal tab) if neither is found.
+$token = [Guid]::NewGuid().ToString('N')
+# isolated browser profile so (a) the setup window is a clean instance separate
+# from the user's tabs and (b) we can reliably close JUST our window afterwards
+$UiProfile = Join-Path $env:TEMP ('webtrack-ui-' + $token)
+
+# open the setup page as a clean standalone window (Edge/Chrome "app mode" - no
+# tabs, no address bar). Fall back to the default browser (a normal tab).
 function Open-SetupWindow([string]$Url) {
     $candidates = @(
         (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'),
@@ -170,13 +174,29 @@ function Open-SetupWindow([string]$Url) {
     )
     foreach ($exe in $candidates) {
         if ($exe -and (Test-Path $exe)) {
-            try { Start-Process $exe -ArgumentList ('--app={0}' -f $Url), '--window-size=560,640'; return } catch { }
+            try {
+                Start-Process $exe -ArgumentList @(
+                    ('--app={0}' -f $Url),
+                    ('--user-data-dir={0}' -f $UiProfile),
+                    '--no-first-run', '--no-default-browser-check', '--window-size=580,720'
+                )
+                return
+            } catch { }
         }
     }
-    Start-Process $Url   # default browser, normal tab
+    Start-Process $Url   # default browser, normal tab (can't be auto-closed)
 }
 
-$token = [Guid]::NewGuid().ToString('N')
+# close only the setup window we opened (matched by our unique profile dir)
+function Close-SetupWindow {
+    try {
+        Get-CimInstance Win32_Process -Filter "Name='msedge.exe' OR Name='chrome.exe'" |
+            Where-Object { $_.CommandLine -like "*$UiProfile*" } |
+            ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    } catch { }
+    try { Remove-Item $UiProfile -Recurse -Force -ErrorAction SilentlyContinue } catch { }
+}
+
 $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, 0)
 try {
     $listener.Start()
@@ -259,6 +279,11 @@ try {
     }
 } finally {
     try { $listener.Stop() } catch { }
+}
+
+if (-not $NoBrowser) {
+    if ($done) { Start-Sleep -Seconds 4 }   # let the success page be read, then close it
+    Close-SetupWindow
 }
 
 if ($done) { exit 0 }          # installed

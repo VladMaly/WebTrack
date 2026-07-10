@@ -16,6 +16,11 @@ function Msg([string]$Text, [string]$Icon = 'Information') {
         [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]$Icon)
 }
 
+# clean a possibly-mangled -Source (a stray quote from batch \" quoting) and make
+# sure a hidden crash is never fully silent - show a popup instead of vanishing
+$Source = ([string]$Source).Trim().Trim('"')
+try {
+
 $dest = Join-Path $env:LOCALAPPDATA 'WebTrack'
 
 # where the program files are: app\ next to the installer, or flat (already installed)
@@ -67,3 +72,9 @@ if ($LASTEXITCODE -eq 1) {
     Msg "Setup didn't finish. Please send a photo of any error to whoever gave you WebTrack." 'Error'
 }
 exit 0
+
+}
+catch {
+    Msg ("WebTrack setup ran into a problem:`r`n`r`n" + $_.Exception.Message) 'Error'
+    exit 1
+}

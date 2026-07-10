@@ -1,5 +1,19 @@
 # WebTrack
 
+> ### How this is built (the deliberate workarounds)
+>
+> WebTrack looks like a normal desktop app but ships **zero compiled binaries** — on purpose. Every choice below dodges a specific limitation. Full reasoning in [`WHY-NO-INSTALLER.md`](WHY-NO-INSTALLER.md).
+>
+> | Goal | The limitation | What we did instead |
+> |---|---|---|
+> | **Fancy, modern UI** | A compiled app (Electron/Tauri/Flutter/`.exe`) needs an **OV/EV code-signing cert** (Windows SmartScreen) or Apple's **$99/yr** Developer ID (macOS Gatekeeper) — or it's blocked/warned as malware | The UI is a **local web page opened in the user's own already-signed browser** (Edge/Chrome) in a clean app-style window. Nothing of ours is compiled, so **there's nothing to sign** |
+> | **No runtime to install** | Python/Node/Zig would mean installing a runtime (Python/Node) or shipping a compiled binary that needs signing (Zig) | Wrote everything in **PowerShell** — already installed and Microsoft-signed on every Windows box. **Zero dependencies** |
+> | **Runs 24/7 in the background** | A background service normally needs an installed, signed program | Used **Windows Task Scheduler** (an OS feature) + a hidden launcher — no binary of ours |
+> | **Loud, reliable alerts** | — | Native **Windows notifications** via a registered app identity (no signed binary needed) |
+> | **Nice icons on shortcuts** | `.bat` files can't carry a custom icon | Real **Start Menu shortcuts** with icons point at the scripts |
+>
+> **Net result:** a modern-looking, background stock watcher that installs from a **~24 KB zip**, needs **no admin rights, no dependencies, no code-signing, and throws no security warnings** — on Windows. (This free trick is Windows-only; macOS charges the $99/yr signing tax no matter what.)
+
 Watches [mint.ca](https://www.mint.ca) product pages and alerts the moment an item comes in stock:
 
 - **Persistent Windows notification** (stays on screen until dismissed) — click it to open the product page
